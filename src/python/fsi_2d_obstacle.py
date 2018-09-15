@@ -26,6 +26,9 @@ VELOCITY = 2
 PRESSURE = 3
 REFPRESSURE = 4
 
+ST_VENANT_KIRCHOFF_MATERIAL = 1
+MOONEY_RIVLIN_MATERIAL = 2
+
 #================================================================================================================================
 #  User changeable example parameters
 #================================================================================================================================
@@ -67,11 +70,26 @@ B = 2.0
 C = -0.5
 
 # Material properties
+
+# Fluid
 fluidDynamicViscosity = 0.05  # kg / (m s)
 fluidDensity  = 100           # kg m^-3
+
+# Solid
+
+solidMaterialLaw = ST_VENANT_KIRCHOFF_MATERIAL
+#solidMaterialLaw = MOONEY_RIVLIN_MATERIAL
+
 solidDensity  = 300           # kg m^-3
+
 mooneyRivlin1 = 2.0           # N / m^2
 mooneyRivlin2 = 4.0
+
+solidPoissonsRatio = 0.47
+solidYoungsModulus = 1.0e6 # Pa
+solidLambda = solidPoissonsRatio*solidYoungsModulus/((1.0+solidPoissonsRatio)*(1.0-2.0*solidPoissonsRatio))
+solidMu = solidYoungsModulus/(2.0*(1.0+solidPoissonsRatio))
+
 # Moving mesh
 movingMeshKParameter   = 1.0       #default
 
@@ -82,7 +100,7 @@ solidPInit = -mooneyRivlin1
 fluidPInit = fluidPRef
 
 # Set solver parameters
-fsiDynamicSolverTheta    = [1.0]
+#fsiDynamicSolverTheta    = [1.0]
 nonlinearMaximumIterations      = 100000000 #default: 100000
 nonlinearRelativeTolerance      = 1.0E-4    #default: 1.0E-05
 nonlinearAbsoluteTolerance      = 1.0E-4    #default: 1.0E-10
@@ -214,7 +232,7 @@ solidDecompositionUserNumber     = 1
 fluidDecompositionUserNumber     = 2
 interfaceDecompositionUserNumber = 3
           
-solidGeometricFieldUserNumber     = 11
+solidGeometricFieldUserNumber    = 11
 solidFibreFieldUserNumber     = 12
 solidEquationsSetFieldUserNumber = 13
 solidDependentFieldUserNumber = 14
@@ -302,7 +320,7 @@ def GetElementNodes2D(elementNumber,subElementNumber,localNodes2D,numberOfXNodes
             localNodes2D[4] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 1
             localNodes2D[5] = localNodes2D[localNodeIdx100] + numberOfXNodes1
         else:
-	    localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 2
+            localNodes2D[localNodeIdx010] = localNodes2D[localNodeIdx100] + 2
             localNodes2D[localNodeIdx001] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + numberOfXNodes2 + 2
             localNodes2D[3] = localNodes2D[localNodeIdx100] + 1
             localNodes2D[4] = localNodes2D[localNodeIdx100] + numberOfXNodes1 + 2
@@ -428,9 +446,8 @@ if not os.path.exists('./output/Interface'):
 iron.OutputSetOn("Testing")
 
 # Get the computational nodes info
-computationEnvironment = iron.ComputationEnvironment()
-numberOfComputationalNodes = computationEnvironment.NumberOfWorldNodesGet()
-computationalNodeNumber = computationEnvironment.WorldNodeNumberGet()
+numberOfComputationalNodes = iron.ComputationalNumberOfNodesGet()
+computationalNodeNumber = iron.ComputationalNodeNumberGet()
           
 #================================================================================================================================
 #  Initial Data & Default Values
@@ -448,7 +465,7 @@ solidEquationsSetOutputType = iron.EquationsSetOutputTypes.NONE
 solidEquationsOutputType = iron.EquationsOutputTypes.NONE
 #solidEquationsOutputType = iron.EquationsOutputTypes.TIMING
 #solidEquationsOutputType = iron.EquationsOutputTypes.MATRIX
-#solidEquationsOutputType = iron.EquationsOutputTypes.ELEMENT_MATRIX
+solidEquationsOutputType = iron.EquationsOutputTypes.ELEMENT_MATRIX
 movingMeshEquationsSetOutputType = iron.EquationsSetOutputTypes.NONE
 #movingMeshEquationsSetOutputType = iron.EquationsSetOutputTypes.PROGRESS
 movingMeshEquationsOutputType = iron.EquationsOutputTypes.NONE
@@ -468,14 +485,14 @@ movingMeshLinearSolverOutputType = iron.SolverOutputTypes.NONE
 #movingMeshLinearSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiDynamicSolverOutputType = iron.SolverOutputTypes.NONE
 fsiDynamicSolverOutputType = iron.SolverOutputTypes.MONITOR
-#fsiDynamicSolverOutputType = iron.SolverOutputTypes.MATRIX
+fsiDynamicSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiNonlinearSolverOutputType = iron.SolverOutputTypes.NONE
 fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MONITOR
 #fsiNonlinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
-#fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MATRIX
+fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiLinearSolverOutputType = iron.SolverOutputTypes.NONE
 fsiLinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
-#fsiLinearSolverOutputType = iron.SolverOutputTypes.MATRIX
+fsiLinearSolverOutputType = iron.SolverOutputTypes.MATRIX
 
 if (setupOutput):
     print('SUMMARY')
@@ -1225,6 +1242,45 @@ if (problemType == FSI):
 if (progressDiagnostics):
     print('Geometric Parameters ... Done')
 
+if (problemType != FLUID):
+    
+    if (progressDiagnostics):
+        print('Fibre Field ...')
+        
+    # Start to create a fibre field on the solid region
+    solidFibreField = iron.Field()
+    solidFibreField.CreateStart(solidFibreFieldUserNumber,solidRegion)
+    # Set the type to be a fibre field
+    solidFibreField.TypeSet(iron.FieldTypes.FIBRE)
+    # Set the decomposition to use
+    solidFibreField.MeshDecompositionSet(solidDecomposition)
+    # Set the geometric field
+    solidFibreField.GeometricFieldSet(solidGeometricField)
+    # Set the scaling to use
+    if (uInterpolation == CUBIC_HERMITE):
+        solidFibreField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
+    else:
+        solidFibreField.ScalingTypeSet(iron.FieldScalingTypes.NONE)
+    solidFibreField.VariableLabelSet(iron.FieldVariableTypes.U,'SolidFibre')
+    # Set the domain to be used by the field components.
+    solidFibreField.ComponentMeshComponentSet(iron.FieldVariableTypes.U,1,1)
+    solidFibreField.ComponentMeshComponentSet(iron.FieldVariableTypes.U,2,1)
+    # Finish creating the field
+    solidFibreField.CreateFinish()
+    
+    if (progressDiagnostics):
+        print('Fibre Field ... Done')
+        
+    if (progressDiagnostics):
+        print('Fibre Parameters ...')
+        
+    solidFibreField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,0.0)
+    solidFibreField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,0.0)
+
+    if (progressDiagnostics):
+        print('Fibre Parameters ... Done')
+        
+
 #================================================================================================================================
 #  Equations Set
 #================================================================================================================================
@@ -1236,12 +1292,23 @@ if (problemType != FLUID):
     # Create the equations set for the solid region 
     solidEquationsSetField = iron.Field()
     solidEquationsSet = iron.EquationsSet()
-    solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
-                                      iron.EquationsSetTypes.FINITE_ELASTICITY,
-                                      iron.EquationsSetSubtypes.MOONEY_RIVLIN]
-    solidEquationsSet.CreateStart(solidEquationsSetUserNumber,solidRegion,solidGeometricField,
-                                  solidEquationsSetSpecification,solidEquationsSetFieldUserNumber,
-                                  solidEquationsSetField)
+    if (solidMaterialLaw == ST_VENANT_KIRCHOFF_MATERIAL):
+        solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
+                                          iron.EquationsSetTypes.FINITE_ELASTICITY,
+                                          iron.EquationsSetSubtypes.DYNAMIC_ST_VENANT_KIRCHOFF]
+        solidEquationsSet.CreateStart(solidEquationsSetUserNumber,solidRegion,solidFibreField,
+                                      solidEquationsSetSpecification,solidEquationsSetFieldUserNumber,
+                                      solidEquationsSetField)
+    elif (solidMaterialLaw == MOONEY_RIVLIN_MATERIAL):
+        solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
+                                          iron.EquationsSetTypes.FINITE_ELASTICITY,
+                                          iron.EquationsSetSubtypes.DYNAMIC_MOONEY_RIVLIN]
+        solidEquationsSet.CreateStart(solidEquationsSetUserNumber,solidRegion,solidGeometricField,
+                                      solidEquationsSetSpecification,solidEquationsSetFieldUserNumber,
+                                      solidEquationsSetField)
+    else:
+        print('Invalid material law')
+        exit()
     solidEquationsSet.OutputTypeSet(solidEquationsSetOutputType)
     solidEquationsSet.CreateFinish()
     
@@ -1405,12 +1472,17 @@ if (problemType != FLUID):
     solidMaterialsField = iron.Field()
     solidEquationsSet.MaterialsCreateStart(solidMaterialsFieldUserNumber,solidMaterialsField)
     solidMaterialsField.VariableLabelSet(iron.FieldVariableTypes.U,'SolidMaterials')
-    solidMaterialsField.VariableLabelSet(iron.FieldVariableTypes.V,'SolidDensity')
     solidEquationsSet.MaterialsCreateFinish()
-    # Set Mooney-Rivlin constants c10 and c01 respectively
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,mooneyRivlin1)
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,mooneyRivlin2)
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.V,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+    if (solidMaterialLaw == ST_VENANT_KIRCHOFF_MATERIAL):
+        # Set Lame parameters lambda and mu respectively
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,solidLambda)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,solidMu)
+    elif (solidMaterialLaw == MOONEY_RIVLIN_MATERIAL):
+        # Set Mooney-Rivlin constants c10 and c01 respectively
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,mooneyRivlin1)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,mooneyRivlin2)
 
 if (problemType != SOLID):
     # Create the equations set materials field variables for dynamic Navier-Stokes
@@ -1690,11 +1762,11 @@ elif (problemType == FSI):
     if RBS:
         fsiProblemSpecification = [iron.ProblemClasses.MULTI_PHYSICS,
                                    iron.ProblemTypes.FINITE_ELASTICITY_NAVIER_STOKES,
-                                   iron.ProblemSubtypes.FINITE_ELASTICITY_RBS_NAVIER_STOKES_ALE]
+                                   iron.ProblemSubtypes.DYNAMIC_FINITE_ELAST_RBS_NAV_STOKES_ALE]
     else:
         fsiProblemSpecification = [iron.ProblemClasses.MULTI_PHYSICS,
                                    iron.ProblemTypes.FINITE_ELASTICITY_NAVIER_STOKES,
-                                   iron.ProblemSubtypes.FINITE_ELASTICITY_NAVIER_STOKES_ALE]
+                                   iron.ProblemSubtypes.DYNAMIC_FINITE_ELAST_NAV_STOKES_ALE]
         
 fsiProblem.CreateStart(fsiProblemUserNumber,fsiProblemSpecification)
 fsiProblem.CreateFinish()
@@ -1771,7 +1843,7 @@ elif (problemType == FLUID):
     # Get the dynamic ALE solver
     fsiProblem.SolverGet([iron.ControlLoopIdentifiers.NODE],2,fsiDynamicSolver)
     fsiDynamicSolver.OutputTypeSet(fsiDynamicSolverOutputType)
-    fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverTheta)
+    #fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverTheta)
     # Get the dynamic nonlinear solver
     fsiDynamicSolver.DynamicNonlinearSolverGet(fsiNonlinearSolver)
     fsiNonlinearSolver.NewtonLineSearchTypeSet(iron.NewtonLineSearchTypes.LINEAR)
@@ -1800,7 +1872,7 @@ elif (problemType == FSI):
     # Get the dynamic ALE solver
     fsiProblem.SolverGet([iron.ControlLoopIdentifiers.NODE],2,fsiDynamicSolver)
     fsiDynamicSolver.OutputTypeSet(fsiDynamicSolverOutputType)
-    fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverTheta)
+    #fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverTheta)
     # Get the dynamic nonlinear solver
     fsiDynamicSolver.DynamicNonlinearSolverGet(fsiNonlinearSolver)
     fsiNonlinearSolver.NewtonLineSearchTypeSet(iron.NewtonLineSearchTypes.LINEAR)
