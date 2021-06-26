@@ -26,6 +26,15 @@ VELOCITY = 2
 PRESSURE = 3
 REFPRESSURE = 4
 
+ST_VENANT_KIRCHOFF = 1
+MOONEY_RIVLIN = 2
+
+COMPRESSIBLE = 1
+INCOMPRESSIBLE = 2
+
+ANALYTIC = 1
+FINITE_DIFFERENCE = 2
+
 #================================================================================================================================
 #  User changeable example parameters
 #================================================================================================================================
@@ -33,8 +42,8 @@ REFPRESSURE = 4
 problemType = FSI
 #problemType = FLUID
 
-width = 3.0
-height = 1.5
+width = 3.0 # m
+height = 1.5 # m
 
 numberOfSolidXElements = 1
 numberOfSolidYElements = 2
@@ -42,10 +51,10 @@ numberOfFluidX1Elements = 1
 numberOfFluidX2Elements = 1
 numberOfFluidYElements = 1
 
-#uInterpolation = QUADRATIC_LAGRANGE
-#pInterpolation = LINEAR_LAGRANGE
-uInterpolation = QUADRATIC_SIMPLEX
-pInterpolation = LINEAR_SIMPLEX
+uInterpolation = QUADRATIC_LAGRANGE
+pInterpolation = LINEAR_LAGRANGE
+#uInterpolation = QUADRATIC_SIMPLEX
+#pInterpolation = LINEAR_SIMPLEX
 
 #RBS = False
 RBS = True
@@ -57,32 +66,55 @@ progressDiagnostics = True
 debugLevel = 3
 
 # Temporal information
-startTime = 0.0
-stopTime  = 5.01
-timeStep  = 0.1
+startTime = 0.0 # s
+stopTime  = 5.01 # s
+timeStep  = 0.1 # s
 
 # Inlet velocity parameters
-A = 0.5
-B = 2.0
-C = -0.5
+A = 0.5 # m s^-1
+#A = 0.0 # m s^-1
+B = 2.0 # dimensionless
+C = -0.5 # s^-1
 
 # Material properties
-fluidDynamicViscosity = 0.05  # kg / (m s)
-fluidDensity  = 100           # kg m^-3
-solidDensity  = 300           # kg m^-3
-mooneyRivlin1 = 2.0           # N / m^2
-mooneyRivlin2 = 4.0
+
+# Fluid
+fluidDynamicViscosity = 0.00089  # Pa s (kg m^-1 s^-1) - water
+fluidDensity  = 997.0            # kg m^-3 - water
+
+#Solid
+#solidMaterial = ST_VENANT_KIRCHOFF
+solidMaterial = MOONEY_RIVLIN
+#solidCompressibility = COMPRESSIBLE
+solidCompressibility = INCOMPRESSIBLE
+solidDensity  = 1100.0             # kg m^-3 - silicon rubber
+
+if (solidMaterial == ST_VENANT_KIRCHOFF):
+    poissonsRatio = 0.47 # dimensionless
+    youngsModulus = 1000000.0 # Pa (kg m^-1 s^-2) - silicon rubber
+    lameLambda = poissonsRatio*youngsModulus/((1.0+poissonsRatio)*(1.0-2.0*poissonsRatio))
+    lameMu = youngsModulus/(2.0*(1.0+poissonsRatio))    
+elif (solidMaterial == MOONEY_RIVLIN):
+    mooneyRivlin1 = 800000.0         # Pa (kg m^-1 s^-2) - silicon rubber
+    mooneyRivlin2 = -7000000.0       # Pa (kg m^-1 s^-2) - silicon rubber
+else:
+    print('Invalid solid material')
+    exit()
+
 # Moving mesh
 movingMeshKParameter   = 1.0       #default
 
-solidPRef = 0.0
-fluidPRef = 0.0
+fluidPInit = 0.0
+if (solidMaterial == MOONEY_RIVLIN):
+    solidPInit = -mooneyRivlin1 # Initial hydrostatic pressure
+else:
+    solidPInit = 0.0 # Initial hydrostatic pressure
 
-solidPInit = -mooneyRivlin1
-fluidPInit = fluidPRef
+solidPRef = solidPInit
+fluidPRef = fluidPInit
 
 # Set solver parameters
-fsiDynamicSolverTheta    = [1.0]
+fsiDynamicSolverThetas    = [2.0,1.0]
 nonlinearMaximumIterations      = 100000000 #default: 100000
 nonlinearRelativeTolerance      = 1.0E-4    #default: 1.0E-05
 nonlinearAbsoluteTolerance      = 1.0E-4    #default: 1.0E-10
@@ -93,6 +125,9 @@ linearRelativeTolerance      = 1.0E-4    #default: 1.0E-05
 linearAbsoluteTolerance      = 1.0E-4    #default: 1.0E-10
 linearDivergenceTolerance    = 1.0E5     #default: 1.0E5
 linearRestartValue           = 30        #default: 30
+
+#jacobianType = ANALYTIC
+jacobianType = FINITE_DIFFERENCE
 
 #================================================================================================================================
 #  Should not need to change anything below here.
@@ -434,7 +469,6 @@ if not os.path.exists('./output/Interface'):
 worldRegion = iron.Region()
 iron.Context.WorldRegionGet(worldRegion)
 
-
 # Get the computational nodes info
 computationEnvironment = iron.ComputationEnvironment()
 iron.Context.ComputationEnvironmentGet(computationEnvironment)
@@ -450,16 +484,16 @@ computationalNodeNumber = worldWorkGroup.GroupNodeNumberGet()
 
 # (NONE/TIMING/MATRIX/ELEMENT_MATRIX/NODAL_MATRIX)
 fluidEquationsSetOutputType = iron.EquationsSetOutputTypes.NONE
-#fluidEquationsSetOutputType = iron.EquationsSetOutputTypes.PROGRESS
+fluidEquationsSetOutputType = iron.EquationsSetOutputTypes.PROGRESS
 fluidEquationsOutputType = iron.EquationsOutputTypes.NONE
 #fluidEquationsOutputType = iron.EquationsOutputTypes.TIMING
-#fluidEquationsOutputType = iron.EquationsOutputTypes.MATRIX
+fluidEquationsOutputType = iron.EquationsOutputTypes.MATRIX
 #fluidEquationsOutputType = iron.EquationsOutputTypes.ELEMENT_MATRIX
 solidEquationsSetOutputType = iron.EquationsSetOutputTypes.NONE
-#solidEquationsSetOutputType = iron.EquationsSetOutputTypes.PROGRESS
+solidEquationsSetOutputType = iron.EquationsSetOutputTypes.PROGRESS
 solidEquationsOutputType = iron.EquationsOutputTypes.NONE
 #solidEquationsOutputType = iron.EquationsOutputTypes.TIMING
-#solidEquationsOutputType = iron.EquationsOutputTypes.MATRIX
+solidEquationsOutputType = iron.EquationsOutputTypes.MATRIX
 #solidEquationsOutputType = iron.EquationsOutputTypes.ELEMENT_MATRIX
 movingMeshEquationsSetOutputType = iron.EquationsSetOutputTypes.NONE
 #movingMeshEquationsSetOutputType = iron.EquationsSetOutputTypes.PROGRESS
@@ -468,11 +502,11 @@ movingMeshEquationsOutputType = iron.EquationsOutputTypes.NONE
 #movingMeshEquationsOutputType = iron.EquationsOutputTypes.MATRIX
 #movingMeshEquationsOutputType = iron.EquationsOutputTypes.ELEMENT_MATRIX
 interfaceConditionOutputType = iron.InterfaceConditionOutputTypes.NONE
-#interfaceConditionOutputType = iron.InterfaceConditionOutputTypes.PROGRESS
+interfaceConditionOutputType = iron.InterfaceConditionOutputTypes.PROGRESS
 interfaceEquationsOutputType = iron.EquationsOutputTypes.NONE
 #interfaceEquationsOutputType = iron.EquationsOutputTypes.TIMING
 #interfaceEquationsOutputType = iron.EquationsOutputTypes.PROGRESS
-#interfaceEquationsOutputType = iron.EquationsOutputTypes.MATRIX
+interfaceEquationsOutputType = iron.EquationsOutputTypes.MATRIX
 #interfaceEquationsOutputType = iron.EquationsOutputTypes.ELEMENT_MATRIX
 # (NoOutput/ProgressOutput/TimingOutput/SolverOutput/SolverMatrixOutput)
 movingMeshLinearSolverOutputType = iron.SolverOutputTypes.NONE
@@ -480,13 +514,13 @@ movingMeshLinearSolverOutputType = iron.SolverOutputTypes.NONE
 #movingMeshLinearSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiDynamicSolverOutputType = iron.SolverOutputTypes.NONE
 fsiDynamicSolverOutputType = iron.SolverOutputTypes.MONITOR
-#fsiDynamicSolverOutputType = iron.SolverOutputTypes.MATRIX
+fsiDynamicSolverOutputType = iron.SolverOutputTypes.MATRIX
 #fsiNonlinearSolverOutputType = iron.SolverOutputTypes.NONE
 fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MONITOR
 #fsiNonlinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
-#fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MATRIX
-#fsiLinearSolverOutputType = iron.SolverOutputTypes.NONE
-fsiLinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
+fsiNonlinearSolverOutputType = iron.SolverOutputTypes.MATRIX
+fsiLinearSolverOutputType = iron.SolverOutputTypes.NONE
+#fsiLinearSolverOutputType = iron.SolverOutputTypes.PROGRESS
 #fsiLinearSolverOutputType = iron.SolverOutputTypes.MATRIX
 
 if (setupOutput):
@@ -511,9 +545,15 @@ if (setupOutput):
     if (problemType != FLUID):
         print('    Solid:')
         print('      Density: {0:.3f}'.format(solidDensity))
-        print('      Mooney Rivlin 1: {0:.3f}'.format(mooneyRivlin1))
-        print('      Mooney Rivlin 2: {0:.3f}'.format(mooneyRivlin2))
-        print(' ')
+        if (solidMaterial == ST_VENANT_KIRCHOFF):
+            print('      Material: St-Venant-Kirchoff')
+            print('      Lame lambda: {0:.3f}'.format(lameLambda))
+            print('      Lame mu: {0:.3f}'.format(lameMu))
+        elif (solidMaterial == MOONEY_RIVLIN):
+            print('      Material: Mooney-Rivlin')
+            print('      Mooney Rivlin 1: {0:.3f}'.format(mooneyRivlin1))
+            print('      Mooney Rivlin 2: {0:.3f}'.format(mooneyRivlin2))
+    print(' ')
     print('  Mesh parameters')
     print('  -------------------')
     print(' ')
@@ -578,10 +618,10 @@ if (problemType == FSI):
     interfaceCoordinateSystem.CreateStart(interfaceCoordinateSystemUserNumber,iron.Context)
     interfaceCoordinateSystem.DimensionSet(numberOfDimensions)
     interfaceCoordinateSystem.CreateFinish()
-    
+              
 if (progressDiagnostics):
     print('Coordinate systems ... Done')
-    
+              
 #================================================================================================================================
 #  Regions
 #================================================================================================================================
@@ -603,17 +643,17 @@ if (problemType != SOLID):
     fluidRegion.label = 'FluidRegion'
     fluidRegion.coordinateSystem = fluidCoordinateSystem
     fluidRegion.CreateFinish()
-    
+              
 if (progressDiagnostics):
     print('Regions ... Done')
-
+    
 #================================================================================================================================
 #  Bases
 #================================================================================================================================
 
 if (progressDiagnostics):
     print('Basis functions ...')
-          
+              
 pBasis = iron.Basis()
 pBasis.CreateStart(pBasisUserNumber,iron.Context)
 pBasis.NumberOfXiSet(numberOfDimensions)
@@ -675,7 +715,7 @@ if (problemType == FSI):
             exit()
         interfaceBasis.QuadratureOrderSet(gaussOrder)
     else:
-        interfaceBasis.Type(iron.BasisTypes.LAGRANGE_HERMITE_TP)
+        interfaceBasis.TypeSet(iron.BasisTypes.LAGRANGE_HERMITE_TP)
         if (uInterpolation == LINEAR_LAGRANGE):
             interfaceBasis.InterpolationXiSet([iron.BasisInterpolationSpecifications.LINEAR_LAGRANGE]*numberOfInterfaceDimensions)
         elif (uInterpolation == QUADRATIC_LAGRANGE):
@@ -692,14 +732,14 @@ if (problemType == FSI):
 
 if (progressDiagnostics):
     print('Basis functions ... Done')
-  
+    
 #================================================================================================================================
 #  Mesh
 #================================================================================================================================
 
 if (progressDiagnostics):
     print('Meshes ...')    
-                   
+              
 pNodes2D = [0]*4
 uNodes2D = [0]*numberOfLocalNodes
 localNodes2D = [0]*numberOfLocalNodes
@@ -708,18 +748,18 @@ if (problemType != FLUID):
     solidNodes = iron.Nodes()
     solidNodes.CreateStart(solidRegion,numberOfSolidNodes)
     solidNodes.CreateFinish()
-
+    
     solidMesh = iron.Mesh()
     solidMesh.CreateStart(solidMeshUserNumber,solidRegion,numberOfDimensions)
     solidMesh.NumberOfElementsSet(numberOfSolidElements)
     solidMesh.NumberOfComponentsSet(2)
-
+    
     solidUElements = iron.MeshElements()
     solidUElements.CreateStart(solidMesh,1,uBasis)
     
     solidPElements = iron.MeshElements()
     solidPElements.CreateStart(solidMesh,2,pBasis)
-                
+    
     # Solid mesh elements
     if (debugLevel > 2):
         print('  Solid Elements:')
@@ -728,11 +768,11 @@ if (problemType != FLUID):
             for subElementIdx in range(1,numberOfSubElements+1):
                 elementNumber = subElementIdx+((xElementIdx-1)+(yElementIdx-1)*numberOfSolidXElements)*numberOfSubElements
                 localNodes2D[localNodeIdx00]=(xElementIdx-1)*(numberOfNodesXi-1)+1+ \
-                                              (yElementIdx-1)*(numberOfNodesXi-1)*(numberOfSolidXNodes)
+                    (yElementIdx-1)*(numberOfNodesXi-1)*(numberOfSolidXNodes)
                 [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfSolidXNodes,numberOfSolidXNodes)
                 solidUElements.NodesSet(elementNumber,uNodes2D)
                 solidPElements.NodesSet(elementNumber,pNodes2D)
-
+                
     solidUElements.CreateFinish()
     solidPElements.CreateFinish()
 
@@ -742,7 +782,7 @@ if (problemType != SOLID):
     fluidNodes = iron.Nodes()
     fluidNodes.CreateStart(fluidRegion,numberOfFluidNodes)
     fluidNodes.CreateFinish()
-
+    
     fluidMesh = iron.Mesh()
     fluidMesh.CreateStart(fluidMeshUserNumber,fluidRegion,numberOfDimensions)
     fluidMesh.NumberOfElementsSet(numberOfFluidElements)
@@ -750,10 +790,10 @@ if (problemType != SOLID):
 
     fluidUElements = iron.MeshElements()
     fluidUElements.CreateStart(fluidMesh,1,uBasis)
-    
+              
     fluidPElements = iron.MeshElements()
     fluidPElements.CreateStart(fluidMesh,2,pBasis)
-                        
+              
     # Fluid mesh elements
     if (debugLevel > 2):
         print('  Fluid Elements:')
@@ -763,7 +803,7 @@ if (problemType != SOLID):
             for subElementIdx in range(1,numberOfSubElements+1):
                 elementNumber = subElementIdx+(xElementIdx-1)*numberOfSubElements+(yElementIdx-1)*numberOfFluidXElements2
                 localNodes2D[localNodeIdx00] = (xElementIdx-1)*(numberOfNodesXi-1)+1+\
-                                               (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
+                    (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
                 [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes2)
                 fluidUElements.NodesSet(elementNumber,uNodes2D)
                 fluidPElements.NodesSet(elementNumber,pNodes2D)
@@ -771,9 +811,9 @@ if (problemType != SOLID):
         for xElementIdx in range(1,numberOfFluidX2Elements+1):
             for subElementIdx in range(1,numberOfSubElements+1):
                 elementNumber = numberOfFluidX1Elements*numberOfSubElements+subElementIdx+(xElementIdx-1)*numberOfSubElements+\
-                                (yElementIdx-1)*numberOfFluidXElements2
+                    (yElementIdx-1)*numberOfFluidXElements2
                 localNodes2D[localNodeIdx00] = numberOfFluidX1Nodes+(xElementIdx-1)*(numberOfNodesXi-1)+1+\
-                                               (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
+                    (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes2
                 if(yElementIdx == numberOfSolidYElements):
                     [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes2,numberOfFluidXNodes1)
                 else: 
@@ -785,10 +825,10 @@ if (problemType != SOLID):
         for xElementIdx in range(1,numberOfFluidX1Elements+numberOfSolidXElements+numberOfFluidX2Elements+1):
             for subElementIdx in range(1,numberOfSubElements+1):
                 elementNumber = numberOfFluidXElements2*numberOfSolidYElements+subElementIdx+(xElementIdx-1)*numberOfSubElements+\
-                                (yElementIdx-1)*numberOfFluidXElements1
+                    (yElementIdx-1)*numberOfFluidXElements1
                 localNodes2D[localNodeIdx00] = numberOfFluidXNodes2*(numberOfSolidYNodes-1)+ \
-                                            (xElementIdx-1)*(numberOfNodesXi-1)+1+\
-                                            (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes1
+                    (xElementIdx-1)*(numberOfNodesXi-1)+1+\
+                    (yElementIdx-1)*(numberOfNodesXi-1)*numberOfFluidXNodes1
                 [uNodes2D,pNodes2D] = GetElementNodes2D(elementNumber,subElementIdx,localNodes2D,numberOfFluidXNodes1,numberOfFluidXNodes1)
                 fluidUElements.NodesSet(elementNumber,uNodes2D)
                 fluidPElements.NodesSet(elementNumber,pNodes2D)
@@ -808,20 +848,20 @@ if (progressDiagnostics):
 if (problemType == FSI):
     if (progressDiagnostics):
         print('Interface ...')
-    
-        # Create an interface between the two meshes
-        interface = iron.Interface()
-        interface.CreateStart(interfaceUserNumber,worldRegion)
-        interface.LabelSet('Interface')
-        # Add in the two meshes
-        solidMeshIndex = interface.MeshAdd(solidMesh)
-        fluidMeshIndex = interface.MeshAdd(fluidMesh)
-        interface.CoordinateSystemSet(interfaceCoordinateSystem)
-        interface.CreateFinish()
-        
+              
+    # Create an interface between the two meshes
+    interface = iron.Interface()
+    interface.CreateStart(interfaceUserNumber,worldRegion)
+    interface.LabelSet('Interface')
+    # Add in the two meshes
+    solidMeshIndex = interface.MeshAdd(solidMesh)
+    fluidMeshIndex = interface.MeshAdd(fluidMesh)
+    interface.CoordinateSystemSet(interfaceCoordinateSystem)
+    interface.CreateFinish()
+              
     if (progressDiagnostics):
         print('Interface ... Done')
-            
+              
 #================================================================================================================================
 #  Interface Mesh
 #================================================================================================================================
@@ -829,7 +869,7 @@ if (problemType == FSI):
 if (problemType == FSI):
     if (progressDiagnostics):
         print('Interface Mesh ...')
-    
+              
     pNodes1D = [0]*2
     uNodes1D = [0]*numberOfLocalInterfaceNodes
     localNodes1D = [0]*numberOfLocalInterfaceNodes
@@ -838,15 +878,15 @@ if (problemType == FSI):
     InterfaceNodes = iron.Nodes()
     InterfaceNodes.CreateStartInterface(interface,numberOfInterfaceNodes)
     InterfaceNodes.CreateFinish()
-    
+              
     interfaceMesh = iron.Mesh()
     interfaceMesh.CreateStartInterface(interfaceMeshUserNumber,interface,numberOfInterfaceDimensions)
     interfaceMesh.NumberOfElementsSet(numberOfInterfaceElements)
     interfaceMesh.NumberOfComponentsSet(1)
-    
+              
     interfaceElements = iron.MeshElements()
     interfaceElements.CreateStart(interfaceMesh,1,interfaceBasis)
-        
+              
     if (debugLevel > 2):
         print('  Interface Elements:')
     elementNumber = 0
@@ -855,14 +895,14 @@ if (problemType == FSI):
         localNodes1D[localNodeIdx00] = (interfaceElementIdx-1)*(numberOfNodesXi-1)+1
         [uNodes1D,pNodes1D] = GetElementNodes1D(elementNumber,localNodes1D)
         interfaceElements.NodesSet(elementNumber,uNodes1D)
-
+        
     interfaceElements.CreateFinish()
 
     interfaceMesh.CreateFinish()
 
     if (progressDiagnostics):
         print('Interface Mesh ... Done')
-    
+              
 
 #================================================================================================================================
 #  Mesh Connectivity
@@ -876,7 +916,7 @@ if (problemType == FSI):
     interfaceMeshConnectivity = iron.InterfaceMeshConnectivity()
     interfaceMeshConnectivity.CreateStart(interface,interfaceMesh)
     interfaceMeshConnectivity.BasisSet(interfaceBasis)
-        
+              
     interfaceElementNumber = 0
     interfaceNodes = [0]*(numberOfInterfaceNodes)
     solidNodes = [0]*(numberOfInterfaceNodes)
@@ -939,7 +979,7 @@ if (problemType == FSI):
             print('  Interface Element %8d:' % (interfaceElementNumber))        
         solidElementNumber = 1+(interfaceElementIdx-1)*numberOfSubElements + numberOfSolidXElements*numberOfSubElements*(numberOfSolidYElements-1)
         fluidElementNumber = numberOfSubElements + (interfaceElementIdx-1)*numberOfSubElements + \
-                             (numberOfFluidX1Elements*numberOfSubElements + numberOfFluidXElements2*numberOfSolidYElements)
+            (numberOfFluidX1Elements*numberOfSubElements + numberOfFluidXElements2*numberOfSolidYElements)
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
@@ -992,18 +1032,18 @@ if (problemType == FSI):
             print('  Interface Element %8d:' % (interfaceElementNumber))
         solidElementNumber = (numberOfSolidYElements - interfaceElementIdx + 1)*numberOfSolidXElements*numberOfSubElements
         fluidElementNumber = (numberOfSolidYElements - interfaceElementIdx)*numberOfFluidXElements2 + \
-                             numberOfFluidX1Elements*numberOfSubElements + 1
+        numberOfFluidX1Elements*numberOfSubElements + 1
         # Map interface elements
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,solidMeshIndex,solidElementNumber)
         interfaceMeshConnectivity.ElementNumberSet(interfaceElementNumber,fluidMeshIndex,fluidElementNumber)
         if (debugLevel > 2):
             print('    Solid Element %8d; Fluid Element %8d' % (solidElementNumber,fluidElementNumber))        
         localInterfaceNodes[0] = (interfaceElementIdx-1)*(numberOfNodesXi-1) + \
-                                 (numberOfSolidXElements + numberOfSolidYElements)*(numberOfNodesXi - 1) + 1
+            (numberOfSolidXElements + numberOfSolidYElements)*(numberOfNodesXi - 1) + 1
         localSolidNodes[0] = (numberOfSolidXElements*(numberOfNodesXi-1) + 1)* \
-                             ((numberOfSolidYElements - interfaceElementIdx + 1)*(numberOfNodesXi-1)+1)
+            ((numberOfSolidYElements - interfaceElementIdx + 1)*(numberOfNodesXi-1)+1)
         localFluidNodes[0] = numberOfFluidXNodes2*(numberOfSolidYElements - interfaceElementIdx + 1)*(numberOfNodesXi-1) + \
-                             numberOfFluidX1Nodes + offset
+            numberOfFluidX1Nodes + offset
         if (uInterpolation == QUADRATIC_LAGRANGE or uInterpolation == QUADRATIC_SIMPLEX):
             localInterfaceNodes[1] = localInterfaceNodes[0]+1
             localSolidNodes[1] = localSolidNodes[0] - numberOfSolidXNodes 
@@ -1039,7 +1079,7 @@ if (problemType == FSI):
                 print('      Fluid node        %8d; Fluid xi = [%.2f, %.2f ]' % (localFluidNodes[localNodeIdx],fluidXi[0],fluidXi[1]))
     # Map interface nodes
     interfaceMeshConnectivity.NodeNumberSet(interfaceNodes,solidMeshIndex,solidNodes,fluidMeshIndex,fluidNodes)        
-
+    
     interfaceMeshConnectivity.CreateFinish()
 
     if (progressDiagnostics):
@@ -1051,7 +1091,7 @@ if (problemType == FSI):
 
 if (progressDiagnostics):
     print('Decomposition ...')
-    
+              
 if (problemType != FLUID):
     # Create a decomposition for the solid mesh
     solidDecomposition = iron.Decomposition()
@@ -1074,14 +1114,14 @@ if (problemType == FSI):
 
 if (progressDiagnostics):
     print('Decomposition ... Done')
-    
+              
 #================================================================================================================================
 #  Decomposer
 #================================================================================================================================
 
 if (progressDiagnostics):
     print('Decomposer ...')
-    
+              
 fsiDecomposer = iron.Decomposer()
 fsiDecomposer.CreateStart(fsiDecomposerUserNumber,worldRegion,worldWorkGroup)
 
@@ -1098,12 +1138,11 @@ if (problemType == FSI):
     interfaceDecompositionIndex = fsiDecomposer.DecompositionAdd(interfaceDecomposition)
 
 fsiDecomposer.OutputTypeSet(iron.DecomposerOutputTypes.ALL)    
-
 fsiDecomposer.CreateFinish()
-    
+              
 if (progressDiagnostics):
     print('Decomposer ... Done')
-    
+              
 #================================================================================================================================
 #  Geometric Field
 #================================================================================================================================
@@ -1167,10 +1206,10 @@ if (problemType == FSI):
 
 if (progressDiagnostics):
     print('Geometric Field ... Done')
-    
+              
 if (progressDiagnostics):
     print('Geometric Parameters ...')
-    
+              
 if (problemType != FLUID):
     # Solid nodes
     if (debugLevel > 2):
@@ -1211,7 +1250,7 @@ if (problemType != SOLID):
     for yNodeIdx in range(1,numberOfFluidYNodes+1):
         for xNodeIdx in range(1,numberOfFluidXNodes1+1):
             nodeNumber = numberOfFluidXNodes2*(numberOfSolidYNodes-1)+xNodeIdx+\
-                         (yNodeIdx-1)*numberOfFluidXNodes1
+                (yNodeIdx-1)*numberOfFluidXNodes1
             nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
             if (nodeDomain == computationalNodeNumber):
                 xPosition = float(xNodeIdx-1)/float(numberOfFluidXNodes1-1)*(fluidX1Size+solidXSize+fluidX2Size)
@@ -1267,15 +1306,39 @@ if (problemType != FLUID):
     # Create the equations set for the solid region 
     solidEquationsSetField = iron.Field()
     solidEquationsSet = iron.EquationsSet()
-    solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
-                                      iron.EquationsSetTypes.FINITE_ELASTICITY,
-                                      iron.EquationsSetSubtypes.DYNAMIC_MOONEY_RIVLIN]
+    if (solidCompressibility == COMPRESSIBLE):
+        if (solidMaterial == ST_VENANT_KIRCHOFF):
+            solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
+                                              iron.EquationsSetTypes.FINITE_ELASTICITY,
+                                              iron.EquationsSetSubtypes.DYNAMIC_COMP_ST_VENANT_KIRCHOFF]
+        elif (solidMaterial == MOONEY_RIVLIN):
+            solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
+                                              iron.EquationsSetTypes.FINITE_ELASTICITY,
+                                              iron.EquationsSetSubtypes.DYNAMIC_COMP_MOONEY_RIVLIN]
+        else:
+            print('Invalid solid material')
+            exit()
+    elif (solidCompressibility == INCOMPRESSIBLE):
+        if (solidMaterial == ST_VENANT_KIRCHOFF):
+            solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
+                                              iron.EquationsSetTypes.FINITE_ELASTICITY,
+                                              iron.EquationsSetSubtypes.DYNAMIC_ST_VENANT_KIRCHOFF]
+        elif (solidMaterial == MOONEY_RIVLIN):
+            solidEquationsSetSpecification = [iron.EquationsSetClasses.ELASTICITY,
+                                              iron.EquationsSetTypes.FINITE_ELASTICITY,
+                                              iron.EquationsSetSubtypes.DYNAMIC_MOONEY_RIVLIN]
+        else:
+            print('Invalid solid material')
+            exit()
+    else:
+        print('Invalid solid compressibility')
+        exit()            
     solidEquationsSet.CreateStart(solidEquationsSetUserNumber,solidRegion,solidGeometricField,
                                   solidEquationsSetSpecification,solidEquationsSetFieldUserNumber,
                                   solidEquationsSetField)
     solidEquationsSet.OutputTypeSet(solidEquationsSetOutputType)
     solidEquationsSet.CreateFinish()
-    
+              
 if (problemType != SOLID):
     # Create the equations set for the fluid region - ALE Navier-Stokes
     fluidEquationsSetField = iron.Field()
@@ -1298,7 +1361,7 @@ if (problemType != SOLID):
             fluidEquationsSetSpecification = [iron.EquationsSetClasses.FLUID_MECHANICS,
                                               iron.EquationsSetTypes.NAVIER_STOKES_EQUATION,
                                               iron.EquationsSetSubtypes.TRANSIENT_NAVIER_STOKES]
-        
+            
     fluidEquationsSet.CreateStart(fluidEquationsSetUserNumber,fluidRegion,fluidGeometricField,
                                   fluidEquationsSetSpecification,fluidEquationsSetFieldUserNumber,
                                   fluidEquationsSetField)
@@ -1341,7 +1404,7 @@ if (progressDiagnostics):
 #================================================================================================================================
 
 if (progressDiagnostics):
-    print('Dependent Fields ...')
+              print('Dependent Fields ...')
 
 if (problemType != FLUID):
     # Create the equations set dependent field variables for the solid equations set
@@ -1352,10 +1415,11 @@ if (problemType != FLUID):
     for componentIdx in range(1,numberOfDimensions+1):
         solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.U,componentIdx,1)
         solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.DELUDELN,componentIdx,1)
-    solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.U,numberOfDimensions+1,2)
-    solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.DELUDELN,numberOfDimensions+1,2)
-    solidDependentField.ComponentInterpolationSet(iron.FieldVariableTypes.U,numberOfDimensions+1,iron.FieldInterpolationTypes.NODE_BASED)
-    solidDependentField.ComponentInterpolationSet(iron.FieldVariableTypes.DELUDELN,numberOfDimensions+1,iron.FieldInterpolationTypes.NODE_BASED)
+    if (solidCompressibility == INCOMPRESSIBLE):
+        solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.U,numberOfDimensions+1,2)
+        solidDependentField.ComponentMeshComponentSet(iron.FieldVariableTypes.DELUDELN,numberOfDimensions+1,2)
+        solidDependentField.ComponentInterpolationSet(iron.FieldVariableTypes.U,numberOfDimensions+1,iron.FieldInterpolationTypes.NODE_BASED)
+        solidDependentField.ComponentInterpolationSet(iron.FieldVariableTypes.DELUDELN,numberOfDimensions+1,iron.FieldInterpolationTypes.NODE_BASED)
     if (uInterpolation == CUBIC_HERMITE):
         solidDependentField.ScalingTypeSet(iron.FieldScalingTypes.ARITHMETIC_MEAN)
     else:
@@ -1367,9 +1431,10 @@ if (problemType != FLUID):
         solidGeometricField.ParametersToFieldParametersComponentCopy(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,\
                                                                      componentIdx,solidDependentField,iron.FieldVariableTypes.U,
                                                                      iron.FieldParameterSetTypes.VALUES,componentIdx)
-    solidDependentField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
-                                                    numberOfDimensions+1,solidPInit)
-    
+    if (solidCompressibility == INCOMPRESSIBLE):
+        solidDependentField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,
+                                                        numberOfDimensions+1,solidPInit)
+        
     solidDependentField.ParameterSetUpdateStart(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
     solidDependentField.ParameterSetUpdateFinish(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
 
@@ -1397,7 +1462,7 @@ if (problemType != SOLID):
                                                     numberOfDimensions+1,fluidPInit)
     if RBS:
         fluidDependentField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.PRESSURE_VALUES,3,fluidPInit)
-        
+              
     fluidDependentField.ParameterSetUpdateStart(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
     fluidDependentField.ParameterSetUpdateFinish(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
 
@@ -1423,7 +1488,7 @@ if (problemType == FSI):
 
 if (progressDiagnostics):
     print('Dependent Fields ... Done')
-     
+              
 #================================================================================================================================
 #  Materials Field
 #================================================================================================================================
@@ -1437,10 +1502,16 @@ if (problemType != FLUID):
     solidEquationsSet.MaterialsCreateStart(solidMaterialsFieldUserNumber,solidMaterialsField)
     solidMaterialsField.VariableLabelSet(iron.FieldVariableTypes.U,'SolidMaterials')
     solidEquationsSet.MaterialsCreateFinish()
-    # Set Mooney-Rivlin constants c10 and c01 respectively
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,mooneyRivlin1)
-    solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,mooneyRivlin2)
+    if (solidMaterial == ST_VENANT_KIRCHOFF):
+        # Set St-Venant-Kirchoff lambda and mu respectively
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,lameLambda)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,lameMu)
+    elif (solidMaterial == MOONEY_RIVLIN):          
+        # Set Mooney-Rivlin constants c10 and c01 respectively
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,1,solidDensity)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,2,mooneyRivlin1)
+        solidMaterialsField.ComponentValuesInitialiseDP(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,3,mooneyRivlin2)
 
 if (problemType != SOLID):
     # Create the equations set materials field variables for dynamic Navier-Stokes
@@ -1455,6 +1526,7 @@ if (problemType == FSI):
     # Create the equations set materials field variables for moving mesh
     movingMeshMaterialsField = iron.Field()
     movingMeshEquationsSet.MaterialsCreateStart(movingMeshMaterialsFieldUserNumber,movingMeshMaterialsField)
+    movingMeshMaterialsField.LabelSet("Moving mesh materials field")
     # Finish the equations set materials field variables
     movingMeshEquationsSet.MaterialsCreateFinish()
 
@@ -1509,17 +1581,33 @@ if (problemType != FLUID):
     # Solid equations
     solidEquations = iron.Equations()
     solidEquationsSet.EquationsCreateStart(solidEquations)
+    #solidEquations.sparsityType = iron.EquationsSparsityTypes.FULL
     solidEquations.sparsityType = iron.EquationsSparsityTypes.SPARSE
     solidEquations.outputType = solidEquationsOutputType
     solidEquationsSet.EquationsCreateFinish()
-
+    if (jacobianType == ANALYTIC):
+        solidEquations.JacobianCalculationTypeSet(1,iron.FieldVariableTypes.U,iron.EquationsJacobianCalculated.ANALYTIC)
+    elif (jacobianType == FINITE_DIFFERENCE):
+        solidEquations.JacobianCalculationTypeSet(1,iron.FieldVariableTypes.U,iron.EquationsJacobianCalculated.FINITE_DIFFERENCE)
+    else:
+        print("Invalid Jacobian type")
+        exit()        
+    
 if (problemType != SOLID):
     # Fluid equations 
     fluidEquations = iron.Equations()
     fluidEquationsSet.EquationsCreateStart(fluidEquations)
+    #fluidEquations.sparsityType = iron.EquationsSparsityTypes.FULL
     fluidEquations.sparsityType = iron.EquationsSparsityTypes.SPARSE
     fluidEquations.outputType = fluidEquationsOutputType
     fluidEquationsSet.EquationsCreateFinish()
+    if (jacobianType == ANALYTIC):
+        fluidEquations.JacobianCalculationTypeSet(1,iron.FieldVariableTypes.U,iron.EquationsJacobianCalculated.ANALYTIC)
+    elif (jacobianType == FINITE_DIFFERENCE):
+        fluidEquations.JacobianCalculationTypeSet(1,iron.FieldVariableTypes.U,iron.EquationsJacobianCalculated.FINITE_DIFFERENCE)
+    else:
+        print("Invalid Jacobian type")
+        exit()        
 
 if (problemType == FSI):
     # Moving mesh equations
@@ -1672,8 +1760,8 @@ if (problemType == FSI):
     for componentIdx in range(1,numberOfDimensions+1):
         interfaceLagrangeField.ComponentValuesInitialise(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES,componentIdx,0.0)
 
-        interfaceLagrangeField.ParameterSetUpdateStart(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
-        interfaceLagrangeField.ParameterSetUpdateFinish(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
+    interfaceLagrangeField.ParameterSetUpdateStart(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
+    interfaceLagrangeField.ParameterSetUpdateFinish(iron.FieldVariableTypes.U,iron.FieldParameterSetTypes.VALUES)
 
     if (progressDiagnostics):
         print('Interface Lagrange Field ... Done')
@@ -1685,6 +1773,7 @@ if (problemType == FSI):
     interfaceEquations = iron.InterfaceEquations()
     interfaceCondition.EquationsCreateStart(interfaceEquations)
     # Set the interface equations sparsity
+    #interfaceEquations.sparsityType = iron.EquationsSparsityTypes.FULL
     interfaceEquations.sparsityType = iron.EquationsSparsityTypes.SPARSE
     # Set the interface equations output
     interfaceEquations.outputType = interfaceEquationsOutputType
@@ -1706,7 +1795,7 @@ fsiProblem = iron.Problem()
 if (problemType == SOLID):
    fsiProblemSpecification = [iron.ProblemClasses.ELASTICITY,
                               iron.ProblemTypes.FINITE_ELASTICITY,
-                              iron.ProblemSubtypes.QUASISTATIC_FINITE_ELASTICITY]
+                              iron.ProblemSubtypes.DYNAMIC_FINITE_ELASTICITY]
 elif (problemType == FLUID):
     if RBS:
         fsiProblemSpecification = [iron.ProblemClasses.FLUID_MECHANICS,
@@ -1720,11 +1809,11 @@ elif (problemType == FSI):
     if RBS:
         fsiProblemSpecification = [iron.ProblemClasses.MULTI_PHYSICS,
                                    iron.ProblemTypes.FINITE_ELASTICITY_NAVIER_STOKES,
-                                   iron.ProblemSubtypes.FINITE_ELASTICITY_RBS_NAVIER_STOKES_ALE]
+                                   iron.ProblemSubtypes.DYNAMIC_FINITE_ELAST_RBS_NAV_STOKES_ALE]
     else:
         fsiProblemSpecification = [iron.ProblemClasses.MULTI_PHYSICS,
                                    iron.ProblemTypes.FINITE_ELASTICITY_NAVIER_STOKES,
-                                   iron.ProblemSubtypes.FINITE_ELASTICITY_NAVIER_STOKES_ALE]
+                                   iron.ProblemSubtypes.DYNAMIC_FINITE_ELAST_NAV_STOKES_ALE]
         
 fsiProblem.CreateStart(fsiProblemUserNumber,iron.Context,fsiProblemSpecification)
 fsiProblem.CreateFinish()
@@ -1774,8 +1863,13 @@ if (problemType == SOLID):
     # Get the nonlinear solver
     fsiProblem.SolverGet([iron.ControlLoopIdentifiers.NODE],2,fsiNonlinearSolver)
     fsiNonlinearSolver.NewtonLineSearchTypeSet(iron.NewtonLineSearchTypes.LINEAR)
-    fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.EQUATIONS) #(.FD/EQUATIONS)
-    #fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.FD) #(.FD/EQUATIONS)
+    if (jacobianType == ANALYTIC):
+        fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.EQUATIONS) #(.FD/EQUATIONS)
+    elif (jacobianType == FINITE_DIFFERENCE):
+        fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.FD) #(.FD/EQUATIONS)
+    else:
+        print("Invalid Jacobian type")
+        exit()        
     fsiNonlinearSolver.NewtonMaximumFunctionEvaluationsSet(nonlinearMaxFunctionEvaluations)
     fsiNonlinearSolver.OutputTypeSet(fsiNonlinearSolverOutputType)
     fsiNonlinearSolver.NewtonAbsoluteToleranceSet(nonlinearAbsoluteTolerance)
@@ -1801,12 +1895,17 @@ elif (problemType == FLUID):
     # Get the dynamic ALE solver
     fsiProblem.SolverGet([iron.ControlLoopIdentifiers.NODE],2,fsiDynamicSolver)
     fsiDynamicSolver.OutputTypeSet(fsiDynamicSolverOutputType)
-    fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverTheta)
+    fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverThetas)
     # Get the dynamic nonlinear solver
     fsiDynamicSolver.DynamicNonlinearSolverGet(fsiNonlinearSolver)
     fsiNonlinearSolver.NewtonLineSearchTypeSet(iron.NewtonLineSearchTypes.LINEAR)
-    fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.EQUATIONS) #(.FD/EQUATIONS)
-    #fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.FD) #(.FD/EQUATIONS)
+    if (jacobianType == ANALYTIC):
+        fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.EQUATIONS) #(.FD/EQUATIONS)
+    elif (jacobianType == FINITE_DIFFERENCE):
+        fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.FD) #(.FD/EQUATIONS)
+    else:
+        print("Invalid Jacobian type")
+        exit()
     fsiNonlinearSolver.NewtonMaximumFunctionEvaluationsSet(nonlinearMaxFunctionEvaluations)
     fsiNonlinearSolver.OutputTypeSet(fsiNonlinearSolverOutputType)
     fsiNonlinearSolver.NewtonAbsoluteToleranceSet(nonlinearAbsoluteTolerance)
@@ -1830,12 +1929,17 @@ elif (problemType == FSI):
     # Get the dynamic ALE solver
     fsiProblem.SolverGet([iron.ControlLoopIdentifiers.NODE],2,fsiDynamicSolver)
     fsiDynamicSolver.OutputTypeSet(fsiDynamicSolverOutputType)
-    fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverTheta)
+    fsiDynamicSolver.DynamicThetaSet(fsiDynamicSolverThetas)
     # Get the dynamic nonlinear solver
     fsiDynamicSolver.DynamicNonlinearSolverGet(fsiNonlinearSolver)
     fsiNonlinearSolver.NewtonLineSearchTypeSet(iron.NewtonLineSearchTypes.LINEAR)
-    #fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.EQUATIONS) #(.FD/EQUATIONS)
-    fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.FD) #(.FD/EQUATIONS)
+    if (jacobianType == ANALYTIC):
+        fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.EQUATIONS) #(.FD/EQUATIONS)
+    elif (jacobianType == FINITE_DIFFERENCE):
+        fsiNonlinearSolver.NewtonJacobianCalculationTypeSet(iron.JacobianCalculationTypes.FD) #(.FD/EQUATIONS)
+    else:
+        print("Invalid Jacobian type")
+        exit()        
     fsiNonlinearSolver.NewtonMaximumFunctionEvaluationsSet(nonlinearMaxFunctionEvaluations)
     fsiNonlinearSolver.OutputTypeSet(fsiNonlinearSolverOutputType)
     fsiNonlinearSolver.NewtonAbsoluteToleranceSet(nonlinearAbsoluteTolerance)
@@ -1850,6 +1954,7 @@ elif (problemType == FSI):
     #fsiLinearSolver.LinearIterativeRelativeToleranceSet(linearRelativeTolerance)
     #fsiLinearSolver.LinearIterativeAbsoluteToleranceSet(linearAbsoluteTolerance)
     fsiLinearSolver.LinearTypeSet(iron.LinearSolverTypes.DIRECT)
+    #fsiLinearSolver.LibraryTypeSet(iron.SolverLibraries.LAPACK)
     fsiLinearSolver.OutputTypeSet(fsiLinearSolverOutputType)
     # Linear solver for moving mesh
     fsiProblem.SolverGet([iron.ControlLoopIdentifiers.NODE],3,movingMeshLinearSolver)
@@ -1893,6 +1998,7 @@ if (problemType == SOLID):
     fsiNonlinearSolver.SolverEquationsGet(fsiSolverEquations)
 else:
     fsiDynamicSolver.SolverEquationsGet(fsiSolverEquations)
+#fsiSolverEquations.sparsityType = iron.SolverEquationsSparsityTypes.FULL
 fsiSolverEquations.sparsityType = iron.SolverEquationsSparsityTypes.SPARSE
 if (problemType != FLUID):
     fsiSolidEquationsSetIndex = fsiSolverEquations.EquationsSetAdd(solidEquationsSet)
@@ -1970,8 +2076,9 @@ if (problemType != FLUID):
                 fsiBoundaryConditions.AddNode(solidDependentField,iron.FieldVariableTypes.U,1, \
                                               iron.GlobalDerivativeConstants.GLOBAL_DERIV_S1_S2, \
                                               nodeNumber,2,iron.BoundaryConditionsTypes.FIXED,0.0)
-    if (debugLevel > 2):
-        print('    Reference Solid Pressure Boundary Condition:')
+    if (solidCompressibility == INCOMPRESSIBLE):
+        if (debugLevel > 2):
+            print('    Reference Solid Pressure Boundary Condition:')
         nodeNumber = numberOfSolidXNodes
         nodeDomain = solidDecomposition.NodeDomainGet(nodeNumber,1)
         if (nodeDomain == computationalNodeNumber):
