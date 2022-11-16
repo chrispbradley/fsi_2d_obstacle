@@ -228,6 +228,8 @@ else:
     localNodeIdx01 = numberOfNodesXi*(numberOfNodesXi-1)
     localNodeIdx11 = numberOfNodesXi*numberOfNodesXi-1
     
+contextUserNumber = 1
+
 solidCoordinateSystemUserNumber     = 1
 fluidCoordinateSystemUserNumber     = 2
 interfaceCoordinateSystemUserNumber = 3
@@ -466,12 +468,15 @@ if not os.path.exists('./output/Solid'):
 if not os.path.exists('./output/Interface'):
     os.makedirs('./output/Interface')
 
+context = iron.Context()
+context.Create(contextUserNumber)
+
 worldRegion = iron.Region()
-iron.Context.WorldRegionGet(worldRegion)
+context.WorldRegionGet(worldRegion)
 
 # Get the computational nodes info
 computationEnvironment = iron.ComputationEnvironment()
-iron.Context.ComputationEnvironmentGet(computationEnvironment)
+context.ComputationEnvironmentGet(computationEnvironment)
 
 worldWorkGroup = iron.WorkGroup()
 computationEnvironment.WorldWorkGroupGet(worldWorkGroup)
@@ -603,19 +608,19 @@ if (progressDiagnostics):
 if (problemType != FLUID):
     # Create a RC coordinate system for the solid region
     solidCoordinateSystem = iron.CoordinateSystem()
-    solidCoordinateSystem.CreateStart(solidCoordinateSystemUserNumber,iron.Context)
+    solidCoordinateSystem.CreateStart(solidCoordinateSystemUserNumber,context)
     solidCoordinateSystem.DimensionSet(numberOfDimensions)
     solidCoordinateSystem.CreateFinish()
 if (problemType != SOLID):
     # Create a RC coordinate system for the fluid region
     fluidCoordinateSystem = iron.CoordinateSystem()
-    fluidCoordinateSystem.CreateStart(fluidCoordinateSystemUserNumber,iron.Context)
+    fluidCoordinateSystem.CreateStart(fluidCoordinateSystemUserNumber,context)
     fluidCoordinateSystem.DimensionSet(numberOfDimensions)
     fluidCoordinateSystem.CreateFinish()
 if (problemType == FSI):
     # Create a RC coordinate system for the interface region
     interfaceCoordinateSystem = iron.CoordinateSystem()
-    interfaceCoordinateSystem.CreateStart(interfaceCoordinateSystemUserNumber,iron.Context)
+    interfaceCoordinateSystem.CreateStart(interfaceCoordinateSystemUserNumber,context)
     interfaceCoordinateSystem.DimensionSet(numberOfDimensions)
     interfaceCoordinateSystem.CreateFinish()
               
@@ -655,7 +660,7 @@ if (progressDiagnostics):
     print('Basis functions ...')
               
 pBasis = iron.Basis()
-pBasis.CreateStart(pBasisUserNumber,iron.Context)
+pBasis.CreateStart(pBasisUserNumber,context)
 pBasis.NumberOfXiSet(numberOfDimensions)
 if (simplex):
     pBasis.TypeSet(iron.BasisTypes.SIMPLEX)
@@ -668,7 +673,7 @@ else:
 pBasis.CreateFinish()
 
 uBasis = iron.Basis()
-uBasis.CreateStart(uBasisUserNumber,iron.Context)
+uBasis.CreateStart(uBasisUserNumber,context)
 uBasis.NumberOfXiSet(numberOfDimensions)
 if (simplex):
     uBasis.TypeSet(iron.BasisTypes.SIMPLEX)
@@ -700,7 +705,7 @@ uBasis.CreateFinish()
 
 if (problemType == FSI):
     interfaceBasis = iron.Basis()
-    interfaceBasis.CreateStart(interfaceBasisUserNumber,iron.Context)
+    interfaceBasis.CreateStart(interfaceBasisUserNumber,context)
     interfaceBasis.NumberOfXiSet(numberOfInterfaceDimensions)
     if (simplex):
         interfaceBasis.TypeSet(iron.BasisTypes.SIMPLEX)
@@ -1815,7 +1820,7 @@ elif (problemType == FSI):
                                    iron.ProblemTypes.FINITE_ELASTICITY_NAVIER_STOKES,
                                    iron.ProblemSubtypes.DYNAMIC_FINITE_ELAST_NAV_STOKES_ALE]
         
-fsiProblem.CreateStart(fsiProblemUserNumber,iron.Context,fsiProblemSpecification)
+fsiProblem.CreateStart(fsiProblemUserNumber,context,fsiProblemSpecification)
 fsiProblem.CreateFinish()
 
 if (progressDiagnostics):
