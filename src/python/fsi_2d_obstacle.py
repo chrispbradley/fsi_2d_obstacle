@@ -1222,7 +1222,7 @@ if (problemType != FLUID):
     for yNodeIdx in range(1,numberOfSolidYNodes+1):
         for xNodeIdx in range(1,numberOfSolidXNodes+1):
             nodeNumber = xNodeIdx+(yNodeIdx-1)*numberOfSolidXNodes
-            nodeDomain = solidDecomposition.NodeDomainGet(nodeNumber,1)
+            nodeDomain = solidDecomposition.NodeDomainGet(1,nodeNumber)
             if (nodeDomain == computationalNodeNumber):
                 xPosition = fluidX1Size + float(xNodeIdx-1)/float(numberOfSolidXNodes-1)*solidXSize
                 yPosition = float(yNodeIdx-1)/float(numberOfSolidYNodes-1)*solidYSize
@@ -1238,7 +1238,7 @@ if (problemType != SOLID):
         # Nodes to the left of the solid
         for xNodeIdx in range(1,numberOfFluidX1Nodes+1):
             nodeNumber = xNodeIdx+(yNodeIdx-1)*numberOfFluidXNodes2
-            nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+            nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
             if (nodeDomain == computationalNodeNumber):
                 xPosition = float(xNodeIdx-1)/float(numberOfFluidX1Elements*(numberOfNodesXi-1))*fluidX1Size
                 yPosition = float(yNodeIdx-1)/float(numberOfSolidYElements*(numberOfNodesXi-1))*solidYSize
@@ -1246,7 +1246,7 @@ if (problemType != SOLID):
         # Nodes to the right of the solid
         for xNodeIdx in range(1,numberOfFluidX2Nodes+1):
             nodeNumber = xNodeIdx+numberOfFluidX1Nodes+(yNodeIdx-1)*numberOfFluidXNodes2
-            nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+            nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
             if (nodeDomain == computationalNodeNumber):
                 xPosition = fluidX1Size+solidXSize+float(xNodeIdx-1)/float(numberOfFluidX1Nodes-1)*fluidX1Size
                 yPosition = float(yNodeIdx-1)/float(numberOfSolidYNodes-1)*solidYSize
@@ -1256,7 +1256,7 @@ if (problemType != SOLID):
         for xNodeIdx in range(1,numberOfFluidXNodes1+1):
             nodeNumber = numberOfFluidXNodes2*(numberOfSolidYNodes-1)+xNodeIdx+\
                 (yNodeIdx-1)*numberOfFluidXNodes1
-            nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+            nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
             if (nodeDomain == computationalNodeNumber):
                 xPosition = float(xNodeIdx-1)/float(numberOfFluidXNodes1-1)*(fluidX1Size+solidXSize+fluidX2Size)
                 yPosition = solidYSize + float(yNodeIdx-1)/float(numberOfFluidYNodes-1)*fluidYSize
@@ -1271,7 +1271,7 @@ if (problemType == FSI):
     # Left edge of interface nodes    
     for yNodeIdx in range(1,numberOfSolidYNodes):
         nodeNumber = yNodeIdx
-        nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = interfaceDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             xPosition = fluidX1Size
             yPosition = float(yNodeIdx-1)/float(numberOfSolidYNodes-1)*solidYSize
@@ -1279,7 +1279,7 @@ if (problemType == FSI):
     # Top edge of interface nodes    
     for xNodeIdx in range(1,numberOfSolidXNodes+1):
         nodeNumber = xNodeIdx+numberOfSolidYNodes-1
-        nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = interfaceDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             xPosition = fluidX1Size+float(xNodeIdx-1)/float(numberOfSolidXNodes-1)*solidXSize
             yPosition = solidYSize
@@ -1287,7 +1287,7 @@ if (problemType == FSI):
     # Right edge of interface nodes    
     for yNodeIdx in range(1,numberOfSolidYNodes):
         nodeNumber = yNodeIdx+(numberOfSolidYElements+numberOfSolidXElements)*(numberOfNodesXi-1)+1
-        nodeDomain = interfaceDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = interfaceDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             xPosition = fluidX1Size+solidXSize
             yPosition = solidYSize-float(yNodeIdx)/float(numberOfSolidYNodes-1)*solidYSize
@@ -1679,7 +1679,7 @@ if (problemType != SOLID):
         print('    Inlet Model Set:')
     for yNodeIdx in range(2,numberOfSolidYNodes):
         nodeNumber = (yNodeIdx-1)*numberOfFluidXNodes2+1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             bcCellMLModelsField.ParameterSetUpdateNodeIntg(oc.FieldVariableTypes.U,oc.FieldParameterSetTypes.VALUES,
                                                            1,oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,1)
@@ -1687,7 +1687,7 @@ if (problemType != SOLID):
                 print('      Node        %d:' % (nodeNumber))
     for yNodeIdx in range(1,numberOfFluidYNodes):
         nodeNumber = (numberOfSolidYNodes-1)*numberOfFluidXNodes2 + (yNodeIdx-1)*numberOfFluidXNodes1+1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             bcCellMLModelsField.ParameterSetUpdateNodeIntg(oc.FieldVariableTypes.U,oc.FieldParameterSetTypes.VALUES,
                                                            1,oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,1)
@@ -2051,7 +2051,7 @@ if (problemType != FLUID):
         print('    No Displacement Boundary conditions:')
     for xNodeIdx in range(1,numberOfSolidXElements*(numberOfNodesXi-1)+2):
         nodeNumber = xNodeIdx
-        nodeDomain = solidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = solidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.AddNode(solidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2085,7 +2085,7 @@ if (problemType != FLUID):
         if (debugLevel > 2):
             print('    Reference Solid Pressure Boundary Condition:')
         nodeNumber = numberOfSolidXNodes
-        nodeDomain = solidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = solidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(solidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2101,7 +2101,7 @@ if (problemType != SOLID):
         print('    Inlet Boundary conditions:')
     for yNodeIdx in range(2,numberOfSolidYNodes+1):
         nodeNumber = (yNodeIdx-1)*numberOfFluidXNodes2+1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2134,7 +2134,7 @@ if (problemType != SOLID):
     for yNodeIdx in range(1,numberOfFluidYNodes):
         nodeNumber = (numberOfSolidYNodes-1)*numberOfFluidXNodes2 + \
                      (yNodeIdx-1)*numberOfFluidXNodes1+1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2170,7 +2170,7 @@ if (problemType != SOLID):
     # Elements to the right of the solid
     for yElementIdx in range(2,numberOfSolidYElements+1):
         nodeNumber = (yElementIdx-1)*(numberOfNodesXi-1)*(numberOfFluidXNodes2)+numberOfFluidXNodes2
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,2)
+        nodeDomain = fluidDecomposition.NodeDomainGet(2,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             if RBS:
                 fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
@@ -2207,7 +2207,7 @@ if (problemType != SOLID):
     # Elements above the solid
     for yElementIdx in range(1,numberOfFluidYElements+2):
         nodeNumber = (numberOfSolidYNodes-1)*numberOfFluidXNodes2 + ((yElementIdx-1)*(numberOfNodesXi-1)+1)*numberOfFluidXNodes1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,2)
+        nodeDomain = fluidDecomposition.NodeDomainGet(2,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             if RBS:
                 fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
@@ -2247,7 +2247,7 @@ if (problemType != SOLID):
         print('    No-slip Boundary conditions:')
     for xNodeIdx in range(1,numberOfFluidX1Nodes+1):
         nodeNumber = xNodeIdx
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2278,7 +2278,7 @@ if (problemType != SOLID):
                                               nodeNumber,2,oc.BoundaryConditionsTypes.FIXED,0.0)
     for xNodeIdx in range(1,numberOfFluidX2Nodes+1):
         nodeNumber = numberOfFluidX1Nodes+xNodeIdx
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2313,8 +2313,8 @@ if (problemType != SOLID):
         for yNodeIdx in range(2,numberOfSolidYNodes):
             nodeNumber1 = (yNodeIdx-1)*numberOfFluidXNodes2+numberOfFluidX1Nodes
             nodeNumber2 = nodeNumber1+1
-            nodeDomain1 = fluidDecomposition.NodeDomainGet(nodeNumber1,1)
-            nodeDomain2 = fluidDecomposition.NodeDomainGet(nodeNumber2,1)
+            nodeDomain1 = fluidDecomposition.NodeDomainGet(1,nodeNumber1)
+            nodeDomain2 = fluidDecomposition.NodeDomainGet(1,nodeNumber2)
             if (nodeDomain1 == computationalNodeNumber):
                 fsiBoundaryConditions.AddNode(fluidDependentField,oc.FieldVariableTypes.U,1,
                                               oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber1,1,
@@ -2374,7 +2374,7 @@ if (problemType != SOLID):
         # Top solid edge nodes
         for xNodeIdx in range(1,numberOfSolidXNodes+1):
             nodeNumber = xNodeIdx+(numberOfSolidYNodes-1)*numberOfFluidXNodes2+numberOfFluidX1Nodes-1
-            nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+            nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
             if (nodeDomain == computationalNodeNumber):
                 fsiBoundaryConditions.AddNode(fluidDependentField,oc.FieldVariableTypes.U,1,
                                               oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,
@@ -2409,7 +2409,7 @@ if (problemType != SOLID):
     for xNodeIdx in range(1,numberOfFluidXNodes1+1):
         nodeNumber = numberOfFluidXNodes2*(numberOfSolidYNodes-1)+ \
                      numberOfFluidXNodes1*(numberOfFluidYNodes-1)+xNodeIdx
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2432,7 +2432,7 @@ if (problemType != SOLID):
     if (debugLevel > 2):
         print('    Reference Fluid Pressure Boundary Condition:')
         nodeNumber = numberOfFluidXNodes2
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,2)
+        nodeDomain = fluidDecomposition.NodeDomainGet(2,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             fsiBoundaryConditions.SetNode(fluidDependentField,oc.FieldVariableTypes.U,1, \
                                           oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV, \
@@ -2511,7 +2511,7 @@ if (problemType == FSI):
     # Bottom edge nodes
     for xNodeIdx in range(1,numberOfFluidXNodes2+1):
         nodeNumber = xNodeIdx
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             movingMeshBoundaryConditions.SetNode(movingMeshDependentField,oc.FieldVariableTypes.U,1,
                                                 oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,
@@ -2544,8 +2544,8 @@ if (problemType == FSI):
     for yNodeIdx in range(2,numberOfSolidYNodes):
         nodeNumber1 = (yNodeIdx-1)*numberOfFluidXNodes2+1
         nodeNumber2 = yNodeIdx*numberOfFluidXNodes2
-        nodeDomain1 = fluidDecomposition.NodeDomainGet(nodeNumber1,1)
-        nodeDomain2 = fluidDecomposition.NodeDomainGet(nodeNumber2,1)
+        nodeDomain1 = fluidDecomposition.NodeDomainGet(1,nodeNumber1)
+        nodeDomain2 = fluidDecomposition.NodeDomainGet(1,nodeNumber2)
         if (nodeDomain1 == computationalNodeNumber):
             movingMeshBoundaryConditions.SetNode(movingMeshDependentField,oc.FieldVariableTypes.U,1,
                                                 oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber1,1,
@@ -2607,8 +2607,8 @@ if (problemType == FSI):
                       numberOfFluidXNodes2*(numberOfSolidYNodes-1)
         nodeNumber2 = yNodeIdx*numberOfFluidXNodes1+\
                       numberOfFluidXNodes2*(numberOfSolidYNodes-1)
-        nodeDomain1 = fluidDecomposition.NodeDomainGet(nodeNumber1,1)
-        nodeDomain2 = fluidDecomposition.NodeDomainGet(nodeNumber2,1)
+        nodeDomain1 = fluidDecomposition.NodeDomainGet(1,nodeNumber1)
+        nodeDomain2 = fluidDecomposition.NodeDomainGet(1,nodeNumber2)
         if (nodeDomain1 == computationalNodeNumber):
             movingMeshBoundaryConditions.SetNode(movingMeshDependentField,oc.FieldVariableTypes.U,1,
                                                 oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber1,1,
@@ -2669,7 +2669,7 @@ if (problemType == FSI):
     for xNodeIdx in range(1,numberOfFluidXNodes1+1):
         nodeNumber = xNodeIdx+numberOfFluidXNodes2*(numberOfSolidYNodes-1)+\
                           (numberOfFluidYNodes-1)*numberOfFluidXNodes1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             movingMeshBoundaryConditions.SetNode(movingMeshDependentField,oc.FieldVariableTypes.U,1,
                                                 oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,
@@ -2704,8 +2704,8 @@ if (problemType == FSI):
     for yNodeIdx in range(2,numberOfSolidYNodes):
         nodeNumber1 = (yNodeIdx-1)*numberOfFluidXNodes2+numberOfFluidX1Nodes
         nodeNumber2 = nodeNumber1+1
-        nodeDomain1 = fluidDecomposition.NodeDomainGet(nodeNumber1,1)
-        nodeDomain2 = fluidDecomposition.NodeDomainGet(nodeNumber2,1)
+        nodeDomain1 = fluidDecomposition.NodeDomainGet(1,nodeNumber1)
+        nodeDomain2 = fluidDecomposition.NodeDomainGet(1,nodeNumber2)
         if (nodeDomain1 == computationalNodeNumber):
             movingMeshBoundaryConditions.AddNode(movingMeshDependentField,oc.FieldVariableTypes.U,1,
                                                 oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber1,1,
@@ -2765,7 +2765,7 @@ if (problemType == FSI):
     # Top solid edge nodes
     for xNodeIdx in range(1,numberOfSolidXNodes+1):
         nodeNumber = xNodeIdx+(numberOfSolidYNodes-1)*numberOfFluidXNodes2+numberOfFluidX1Nodes-1
-        nodeDomain = fluidDecomposition.NodeDomainGet(nodeNumber,1)
+        nodeDomain = fluidDecomposition.NodeDomainGet(1,nodeNumber)
         if (nodeDomain == computationalNodeNumber):
             movingMeshBoundaryConditions.AddNode(movingMeshDependentField,oc.FieldVariableTypes.U,1,
                                                 oc.GlobalDerivativeConstants.NO_GLOBAL_DERIV,nodeNumber,1,
