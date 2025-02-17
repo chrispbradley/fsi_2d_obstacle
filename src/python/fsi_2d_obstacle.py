@@ -458,6 +458,9 @@ from opencmiss.opencmiss import OpenCMISS_Python as oc
 # Output
 oc.OutputSetOn("Testing")
 
+
+path=os.path.dirname(os.path.abspath(__file__))
+
 # Ensure output directories exist
 if not os.path.exists('./output'):
     os.makedirs('./output')
@@ -1636,7 +1639,7 @@ if (problemType != SOLID):
     # Create CellML equations for the temporal fluid boundary conditions
     bcCellML = oc.CellML()
     bcCellML.CreateStart(bcCellMLUserNumber,fluidRegion)
-    bcCellMLIdx = bcCellML.ModelImport("input/exponentialrampupinletbc.cellml")
+    bcCellMLIdx = bcCellML.ModelImport(os.path.join(path,"input/exponentialrampupinletbc.cellml"))
     bcCellML.VariableSetAsKnown(bcCellMLIdx,"main/A")
     bcCellML.VariableSetAsKnown(bcCellMLIdx,"main/B")
     bcCellML.VariableSetAsKnown(bcCellMLIdx,"main/C")
